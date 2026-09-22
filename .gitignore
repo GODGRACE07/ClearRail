@@ -20,3 +20,4 @@ docs/
 !.env.example
 .env
 .env
+.github/workflows/
