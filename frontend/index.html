@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ClearRail — Transparent payroll on Tempo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --canvas: #FBF7FB;
+    --canvas-dim: #F3EBF6;
+    --ink: #1E1030;
+    --ink-soft: #5B4B72;
+    --violet: #7C3AED;
+    --violet-deep: #5B21B6;
+    --pink: #F472B6;
+    --pink-tint: #FCE7F3;
+    --violet-tint: #EDE4FC;
+    --green: #16A34A;
+    --green-tint: #DCFCE7;
+    --amber: #D97706;
+    --amber-tint: #FEF3C7;
+    --hairline: #E7DCEE;
+    --card: #FFFFFF;
+    --font-display: "Instrument Sans", sans-serif;
+    --font-body: "Instrument Sans", sans-serif;
+    --font-mono: "IBM Plex Mono", monospace;
+  }
+  [data-theme="dark"] {
+    --canvas: #150D22; --canvas-dim: #1B1230; --ink: #F3EEFA; --ink-soft: #B6A8CC;
+    --violet: #A78BFA; --violet-deep: #C4B5FD; --pink: #F9A8D4; --pink-tint: #3B1230;
+    --violet-tint: #2A1B45; --green: #4ADE80; --green-tint: #113322; --amber: #FBBF24;
+    --amber-tint: #3A2A0A; --hairline: #2E2145; --card: #1B1230;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas: #150D22; --canvas-dim: #1B1230; --ink: #F3EEFA; --ink-soft: #B6A8CC;
+      --violet: #A78BFA; --violet-deep: #C4B5FD; --pink: #F9A8D4; --pink-tint: #3B1230;
+      --violet-tint: #2A1B45; --green: #4ADE80; --green-tint: #113322; --amber: #FBBF24;
+      --amber-tint: #3A2A0A; --hairline: #2E2145; --card: #1B1230;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font-body);
+    padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+  a { color: inherit; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 24px; position: relative; }
+
+  nav {
+    position: sticky; top: 0; z-index: 30; background: rgba(251,247,251,0.82);
+    backdrop-filter: blur(10px); border-bottom: 1px solid var(--hairline);
+  }
+  [data-theme="dark"] nav, :root:not([data-theme="light"]) nav { background: rgba(21,13,34,0.82); }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .brand { font-weight: 700; font-size: 20px; text-decoration: none; display: flex; align-items: center; gap: 8px; letter-spacing: -0.01em; }
+  .brand .mark { width: 20px; height: 20px; border-radius: 7px; background: linear-gradient(135deg, var(--violet), var(--pink)); flex: none; }
+  .navlinks { display: flex; gap: 26px; font-size: 14px; }
+  .navlinks a { text-decoration: none; color: var(--ink-soft); transition: color 0.15s; }
+  .navlinks a:hover { color: var(--violet); }
+  .navcta { font-size: 13px; font-weight: 600; padding: 9px 16px; border-radius: 10px; text-decoration: none; background: var(--ink); color: var(--canvas); transition: transform 0.15s ease, opacity 0.15s ease; }
+  .navcta:hover { transform: translateY(-1px); opacity: 0.92; }
+  @media (max-width: 720px) { .navlinks { display: none; } }
+
+  .hero { position: relative; padding: 72px 0 48px; overflow: hidden; }
+  .glow { position: absolute; z-index: 0; border-radius: 50%; filter: blur(70px); opacity: 0.55; pointer-events: none; }
+  .glow-1 { width: 420px; height: 420px; background: var(--violet); top: -180px; right: -120px; animation: drift1 18s ease-in-out infinite; }
+  .glow-2 { width: 320px; height: 320px; background: var(--pink); top: 40px; left: -140px; opacity: 0.4; animation: drift2 22s ease-in-out infinite; }
+  @keyframes drift1 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-30px, 40px); } }
+  @keyframes drift2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(40px, -20px); } }
+
+  .hero .wrap { z-index: 1; }
+  .hero-tag { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--violet-deep); background: var(--violet-tint); padding: 7px 14px; border-radius: 100px; margin: 0 0 22px; opacity: 0; transform: translateY(8px); animation: rise 0.6s cubic-bezier(.2,.8,.2,1) 0.05s forwards; }
+  .hero h1 { font-weight: 700; font-size: clamp(38px, 6vw, 66px); line-height: 1.02; letter-spacing: -0.02em; margin: 0 0 22px; max-width: 15ch; opacity: 0; transform: translateY(14px); animation: rise 0.7s cubic-bezier(.2,.8,.2,1) 0.15s forwards; }
+  .hero h1 .accent { background: linear-gradient(100deg, var(--violet), var(--pink)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p.lede { font-size: 18px; line-height: 1.6; color: var(--ink-soft); max-width: 50ch; margin: 0 0 30px; opacity: 0; transform: translateY(14px); animation: rise 0.7s cubic-bezier(.2,.8,.2,1) 0.25s forwards; }
+  .hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; opacity: 0; transform: translateY(14px); animation: rise 0.7s cubic-bezier(.2,.8,.2,1) 0.35s forwards; }
+  @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+
+  .btn { font-size: 14px; font-weight: 600; padding: 13px 22px; border-radius: 12px; text-decoration: none; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.15s ease; }
+  .btn.solid { background: linear-gradient(100deg, var(--violet), var(--violet-deep)); color: #fff; }
+  .btn.solid:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -10px var(--violet); }
+  .btn.ghost { background: var(--card); color: var(--ink); border: 1px solid var(--hairline); }
+  .btn.ghost:hover { border-color: var(--violet); color: var(--violet-deep); transform: translateY(-2px); }
+
+  .board { margin-top: 48px; border-radius: 20px; background: var(--ink); color: var(--canvas); overflow: hidden; box-shadow: 0 30px 60px -30px rgba(30,16,48,0.35); opacity: 0; transform: translateY(18px); animation: rise 0.8s cubic-bezier(.2,.8,.2,1) 0.45s forwards; }
+  .board-head { display: grid; grid-template-columns: 1.6fr 1.4fr 1fr 1.1fr; padding: 14px 22px; font-family: var(--font-mono); font-size: 11px; color: rgba(243,238,250,0.45); border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .board-row { display: grid; grid-template-columns: 1.6fr 1.4fr 1fr 1.1fr; padding: 17px 22px; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 14px; }
+  .board-row:last-child { border-bottom: none; }
+  .board-row .worker { font-weight: 500; }
+  .board-row .corridor { color: rgba(243,238,250,0.5); font-size: 13px; }
+  .board-row .amount { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .flap-cell { display: flex; justify-content: flex-end; }
+  .flap { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 100px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; min-width: 88px; justify-content: center; transition: background 0.3s ease, color 0.3s ease; }
+  .flap .led { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+  .flap.pending { background: rgba(217,119,6,0.18); color: #F5B24A; }
+  .flap.pending .led { background: #F5B24A; }
+  .flap.sent { background: rgba(22,163,74,0.2); color: #6FE39B; }
+  .flap.sent .led { background: #6FE39B; }
+  .board-foot { padding: 12px 22px; font-family: var(--font-mono); font-size: 11px; color: rgba(243,238,250,0.35); display: flex; justify-content: space-between; }
+
+  .stats { padding: 56px 0; }
+  .stats .wrap { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .stat { background: var(--card); border: 1px solid var(--hairline); border-radius: 16px; padding: 22px 20px; transition: transform 0.2s ease, border-color 0.2s ease; }
+  .stat:hover { transform: translateY(-3px); border-color: var(--violet); }
+  .stat b { display: block; font-weight: 700; font-size: 32px; line-height: 1; margin-bottom: 10px; color: var(--violet-deep); }
+  .stat span { font-size: 13px; color: var(--ink-soft); line-height: 1.5; display: block; }
+  @media (max-width: 720px) { .stats .wrap { grid-template-columns: repeat(2, 1fr); } }
+
+  section.block { padding: 76px 0; }
+  .block-head { max-width: 62ch; margin-bottom: 40px; }
+  .eyebrow { font-size: 13px; font-weight: 600; color: var(--violet); margin: 0 0 12px; }
+  .block h2 { font-weight: 700; font-size: clamp(28px, 4vw, 42px); line-height: 1.05; letter-spacing: -0.01em; margin: 0 0 14px; }
+  .block p.sub { font-size: 16px; color: var(--ink-soft); line-height: 1.65; margin: 0; }
+
+  .ledger-row { display: grid; grid-template-columns: 40px 1fr auto; gap: 20px; padding: 24px; align-items: center; background: var(--card); border: 1px solid var(--hairline); border-radius: 16px; margin-bottom: 12px; transition: border-color 0.2s ease; }
+  .ledger-row:hover { border-color: var(--violet); }
+  .ledger-row .idx { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--pink); }
+  .ledger-row p { margin: 0; font-size: 15px; line-height: 1.6; }
+  .ledger-row .fig { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--violet-deep); white-space: nowrap; }
+  @media (max-width: 600px) { .ledger-row { grid-template-columns: 1fr; gap: 8px; } }
+
+  .toggle { display: inline-flex; background: var(--violet-tint); border-radius: 100px; padding: 4px; margin-bottom: 28px; position: relative; }
+  .toggle button { border: none; background: transparent; font-size: 14px; font-weight: 600; padding: 10px 22px; border-radius: 100px; cursor: pointer; color: var(--ink-soft); position: relative; z-index: 1; transition: color 0.25s ease; }
+  .toggle button.active { color: #fff; }
+  .toggle-thumb { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); background: linear-gradient(100deg, var(--violet), var(--violet-deep)); border-radius: 100px; transition: transform 0.3s cubic-bezier(.2,.8,.2,1); z-index: 0; }
+  .toggle.worker-active .toggle-thumb { transform: translateX(100%); }
+
+  .panel-wrap { position: relative; min-height: 420px; }
+  .panel { background: var(--card); border: 1px solid var(--hairline); border-radius: 20px; padding: 30px; position: absolute; inset: 0; opacity: 0; pointer-events: none; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease; }
+  .panel.active { opacity: 1; pointer-events: auto; transform: translateY(0); position: relative; }
+  .panel-label { font-size: 13px; font-weight: 600; color: var(--violet); margin: 0 0 20px; }
+
+  .mock-field { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--hairline); padding: 12px 14px; border-radius: 10px; font-size: 14px; margin-bottom: 10px; }
+  .mock-field .k { color: var(--ink-soft); }
+  .mock-field input { border: none; background: transparent; text-align: right; font-family: var(--font-mono); font-size: 14px; color: var(--ink); width: 60%; outline: none; }
+
+  .worker-list { display: flex; flex-direction: column; margin: 18px 0; border-top: 1px solid var(--hairline); }
+  .worker-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--hairline); font-size: 14px; }
+  .worker-item .w-name { font-family: var(--font-mono); font-size: 13px; }
+  .worker-item .w-amt { font-family: var(--font-mono); color: var(--ink-soft); }
+  .status-pill { font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 100px; display: inline-flex; align-items: center; gap: 5px; }
+  .status-pill .led { width: 5px; height: 5px; border-radius: 50%; }
+  .status-pill.pending { background: var(--amber-tint); color: var(--amber); }
+  .status-pill.pending .led { background: var(--amber); }
+  .status-pill.sent { background: var(--green-tint); color: var(--green); }
+  .status-pill.sent .led { background: var(--green); }
+
+  .mock-btn { width: 100%; padding: 14px; background: linear-gradient(100deg, var(--violet), var(--violet-deep)); color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.15s ease, box-shadow 0.2s ease; }
+  .mock-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 24px -10px var(--violet); }
+  .mock-btn:disabled { opacity: 0.55; cursor: default; transform: none; box-shadow: none; }
+
+  .worker-track { display: flex; align-items: center; gap: 0; margin: 30px 0 26px; position: relative; }
+  .track-line { position: absolute; left: 14px; right: 14px; top: 14px; height: 2px; background: var(--hairline); border-radius: 2px; }
+  .track-node { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
+  .track-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--hairline); background: var(--card); display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
+  .track-node.done .track-dot { background: var(--green); border-color: var(--green); }
+  .track-node.done .track-dot::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+  .track-node.active .track-dot { border-color: var(--amber); }
+  .track-node.active .track-dot::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--amber); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .track-label { font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft); margin-top: 9px; text-align: center; }
+  .worker-amount { font-weight: 700; font-size: 42px; letter-spacing: -0.02em; }
+  .worker-sub { font-size: 14px; color: var(--ink-soft); margin: 4px 0 0; }
+
+  .corridor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 800px) { .corridor-grid { grid-template-columns: repeat(2, 1fr); } }
+  .corridor-cell { background: var(--card); border: 1px solid var(--hairline); border-radius: 16px; padding: 22px 18px; cursor: pointer; transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease; }
+  .corridor-cell:hover { transform: translateY(-4px) rotate(-0.3deg); border-color: var(--pink); }
+  .corridor-cell.active { background: var(--violet-tint); border-color: var(--violet); }
+  .corridor-cell .c-name { font-weight: 600; font-size: 15px; margin: 0 0 6px; }
+  .corridor-cell .c-note { font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin: 0; }
+
+  .corridor-detail { margin-top: 18px; background: var(--ink); color: var(--canvas); border-radius: 16px; padding: 22px 26px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; }
+  .corridor-detail .cd-label { font-size: 12px; color: rgba(243,238,250,0.5); margin: 0 0 6px; }
+  .corridor-detail .cd-fig { font-weight: 700; font-size: 26px; }
+
+  .proof { border: 1px solid var(--hairline); border-radius: 18px; padding: 28px 30px; background: var(--card); display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .proof .p-label { font-size: 12px; color: var(--ink-soft); margin: 0 0 8px; }
+  .proof .p-addr { font-family: var(--font-mono); font-size: 14px; word-break: break-all; }
+  .proof .p-status { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--green); }
+  .proof .p-status .led { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 1.6s ease-in-out infinite; }
+
+  footer { border-top: 1px solid var(--hairline); padding: 44px 0; }
+  footer .wrap { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+  footer .f-left { font-size: 13px; color: var(--ink-soft); }
+  footer .f-links { display: flex; gap: 22px; font-size: 14px; }
+  footer .f-links a { text-decoration: none; color: var(--ink-soft); }
+  footer .f-links a:hover { color: var(--violet); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a href="#" class="brand"><span class="mark"></span>ClearRail</a>
+    <div class="navlinks">
+      <a href="#problem">Problem</a>
+      <a href="#product">Product</a>
+      <a href="#corridors">Corridors</a>
+      <a href="#proof">Contract</a>
+    </div>
+    <a class="navcta" href="https://github.com/GODGRACE07/ClearRail" target="_blank" rel="noopener">View repo</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+  <div class="wrap">
+    <p class="hero-tag">Built on Tempo · Colosseum Crypto World's Fair</p>
+    <h1>Payroll you can <span class="accent">watch move</span>, not wait on.</h1>
+    <p class="lede">A stablecoin payroll rail for agencies paying contractors in USDT-dominant corridors — with live, on-chain status instead of a support ticket.</p>
+    <div class="hero-ctas">
+      <button class="btn solid" id="connect-btn" type="button">Connect wallet</button>
+      <a class="btn ghost" href="https://explore.moderato.tempo.xyz/address/0xb9AdBE24f82F97079C681d38Fa76f605170BB568" target="_blank" rel="noopener">View live contract</a>
+    </div>
+    <p id="wallet-status" style="font-size:13px;color:var(--ink-soft);margin:0 0 4px;min-height:18px"></p>
+
+    <div class="board" aria-label="Illustrative payout status board">
+      <div class="board-head">
+        <span>Contractor</span><span>Corridor</span>
+        <span style="text-align:right">Amount</span><span style="text-align:right">Status</span>
+      </div>
+      <div id="board-body"></div>
+      <div class="board-foot"><span>illustrative sample — connect wallet below for live contract data</span><span id="board-clock">00:00:00</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="wrap">
+    <div class="stat"><b data-target="6.49" data-suffix="%">0%</b><span>average cost to send $200 across borders — unchanged in five years</span></div>
+    <div class="stat"><b data-target="93" data-suffix="%">0%</b><span>of freelancers surveyed want part of their pay in stablecoins</span></div>
+    <div class="stat"><b data-prefix="$" data-target="195">$0</b><span>lost monthly by a $3,000/mo Lagos contractor to fees and spread</span></div>
+    <div class="stat"><b data-target="0">0</b><span>of the top 3 payroll platforms support USDT payouts natively</span></div>
+  </div>
+</div>
+
+<section class="block" id="problem">
+  <div class="wrap">
+    <div class="block-head">
+      <p class="eyebrow">the gap</p>
+      <h2>Three platforms, one missing currency.</h2>
+      <p class="sub">Deel, Remote, and Rippling move the world's contractor payroll — and none of them pay out in USDT, the stablecoin workers in the highest-need corridors actually hold and trust.</p>
+    </div>
+    <div class="ledger">
+      <div class="ledger-row"><span class="idx">01</span><p>Workers get paid in USDC, or a slow local-currency wire — neither matches what they can spend or hold locally.</p><span class="fig">USDT unsupported</span></div>
+      <div class="ledger-row"><span class="idx">02</span><p>Rise supports USDT — but its own users report payouts stuck in limbo with no visibility and slow support.</p><span class="fig">status unknown</span></div>
+      <div class="ledger-row"><span class="idx">03</span><p>Tempo settles in under a second with stablecoin-native fees — there's barely a limbo window to begin with.</p><span class="fig">&lt;1s finality</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="product">
+  <div class="wrap">
+    <div class="block-head">
+      <p class="eyebrow">the product</p>
+      <h2>Two views. One shared truth.</h2>
+      <p class="sub">The agency triggers a payout. The worker sees it land. Neither one waits for the other to explain what happened — the chain already did.</p>
+    </div>
+
+    <div class="toggle" id="view-toggle">
+      <div class="toggle-thumb"></div>
+      <button class="active" data-view="payer">Payer view</button>
+      <button data-view="worker">Worker view</button>
+    </div>
+
+    <div class="panel-wrap">
+      <div class="panel active" id="panel-payer">
+        <p class="panel-label">Payroll owner console — live contract</p>
+        <div class="mock-field"><span class="k">Contract</span><span id="contract-addr-display" style="font-family:var(--font-mono);font-size:12px">0xb9Ad...BB568</span></div>
+        <div class="mock-field"><span class="k">Token</span><span>pathUSD (6 decimals)</span></div>
+
+        <p id="owner-note" style="font-size:13px;color:var(--ink-soft);margin:0 0 12px;line-height:1.5"></p>
+        <p style="font-size:12px;margin:0 0 16px"><a href="https://docs.tempo.xyz/quickstart/faucet" target="_blank" rel="noopener" style="color:var(--violet-deep)">Get free testnet pathUSD from Tempo's faucet →</a></p>
+
+        <button class="mock-btn" id="deploy-sandbox-btn" style="margin-bottom:16px;background:var(--card);color:var(--pink);border:1px solid var(--pink)">
+          Deploy your own sandbox
+        </button>
+
+        <div style="display:flex;gap:8px;margin:16px 0">
+          <input id="add-addr" placeholder="0x worker address" style="flex:2;padding:11px 12px;border:1px solid var(--hairline);border-radius:10px;font-family:var(--font-mono);font-size:13px;background:var(--card);color:var(--ink)">
+          <input id="add-amt" placeholder="Amount $" style="flex:1;padding:11px 12px;border:1px solid var(--hairline);border-radius:10px;font-family:var(--font-mono);font-size:13px;background:var(--card);color:var(--ink)">
+        </div>
+        <button class="mock-btn" id="add-worker-btn" style="margin-bottom:16px" disabled>Connect wallet to add worker</button>
+
+        <div class="worker-list" id="worker-list">
+          <p style="font-size:13px;color:var(--ink-soft);padding:14px 0">Connect your wallet to load real payroll data from the contract.</p>
+        </div>
+        <button class="mock-btn" id="pay-all-btn" disabled>Connect wallet to pay</button>
+        <button class="mock-btn" id="refresh-btn" style="margin-top:8px;background:var(--card);color:var(--violet-deep);border:1px solid var(--hairline)" disabled>Refresh from chain</button>
+        <p id="payer-msg" style="font-size:12px;color:var(--ink-soft);margin:12px 0 0;word-break:break-all"></p>
+      </div>
+
+      <div class="panel" id="panel-worker">
+        <p class="panel-label">Check a payout — live contract</p>
+        <div style="display:flex;gap:8px;margin-bottom:18px">
+          <input id="lookup-addr" placeholder="0x your wallet address" style="flex:1;padding:11px 12px;border:1px solid var(--hairline);border-radius:10px;font-family:var(--font-mono);font-size:13px;background:var(--card);color:var(--ink)">
+          <button class="mock-btn" id="lookup-btn" style="width:auto;padding:11px 20px">Check</button>
+        </div>
+        <div id="worker-results">
+          <p style="font-size:13px;color:var(--ink-soft)">Enter an address (or connect your wallet) to see its real payout status on-chain.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="corridors">
+  <div class="wrap">
+    <div class="block-head">
+      <p class="eyebrow">where it matters</p>
+      <h2>Built for the corridors, not the abstraction.</h2>
+      <p class="sub">Evidenced pain, not a global claim — click a corridor to see why it's on the list.</p>
+    </div>
+    <div class="corridor-grid" id="corridor-grid">
+      <div class="corridor-cell active" data-detail="Naira devaluation risk makes USDT the default hedge for freelance income here." data-fig="~₦900 lost per $50 cash-out to P2P discrepancies"><p class="c-name">Nigeria</p><p class="c-note">Naira devaluation drives USDT preference.</p></div>
+      <div class="corridor-cell" data-detail="USDT liquidity on Tron gives contractors the deepest effective dollar rate available." data-fig="Deepest effective USD rate via USDT P2P"><p class="c-name">Argentina</p><p class="c-note">USDT liquidity beats official FX rates.</p></div>
+      <div class="corridor-cell" data-detail="Bolivar instability pushed Venezuela to $17.9B in Q1 2026 crypto volume, mostly USDT." data-fig="$17.9B in Q1 2026 crypto volume"><p class="c-name">Venezuela</p><p class="c-note">Bolivar instability, USDT as refuge.</p></div>
+      <div class="corridor-cell" data-detail="OFW remittance apps are moving to USDT specifically to skip Western Union and Wise fees." data-fig="Skips Western Union fees entirely"><p class="c-name">Philippines</p><p class="c-note">OFW remittances shifting to USDT.</p></div>
+    </div>
+    <div class="corridor-detail" id="corridor-detail">
+      <div><p class="cd-label">why Nigeria</p><p style="margin:0;max-width:46ch">Naira devaluation risk makes USDT the default hedge for freelance income here.</p></div>
+      <div style="text-align:right"><p class="cd-label">the number</p><p class="cd-fig" style="font-size:16px;font-weight:600">~₦900 lost per $50 cash-out to P2P discrepancies</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="proof">
+  <div class="wrap">
+    <div class="block-head">
+      <p class="eyebrow">verifiable</p>
+      <h2>Live on Tempo testnet.</h2>
+      <p class="sub">Not a mockup — a deployed contract, tested, with real payouts already executed on-chain.</p>
+    </div>
+    <div class="proof">
+      <div><p class="p-label">contract address</p><p class="p-addr">0xb9AdBE24f82F97079C681d38Fa76f605170BB568</p></div>
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <span class="p-status"><span class="led"></span>deployed &amp; verified</span>
+        <a class="btn ghost" href="https://explore.moderato.tempo.xyz/address/0xb9AdBE24f82F97079C681d38Fa76f605170BB568" target="_blank" rel="noopener">Explorer</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="f-left">ClearRail — Colosseum Crypto World's Fair, Tempo track</span>
+    <div class="f-links">
+      <a href="https://github.com/GODGRACE07/ClearRail" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://explore.moderato.tempo.xyz/address/0xb9AdBE24f82F97079C681d38Fa76f605170BB568" target="_blank" rel="noopener">Explorer</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script>
+(function() {
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var corridors = [
+    { name: "Chidi O.", place: "Lagos, NG", amt: "$1,240.00" },
+    { name: "Valentina R.", place: "Buenos Aires, AR", amt: "$980.50" },
+    { name: "Marco P.", place: "Manila, PH", amt: "$2,100.00" },
+    { name: "Josefina M.", place: "Caracas, VE", amt: "$640.00" },
+    { name: "Ade B.", place: "Lagos, NG", amt: "$1,875.00" }
+  ];
+  var boardBody = document.getElementById("board-body");
+  corridors.forEach(function(c, i) {
+    var row = document.createElement("div");
+    row.className = "board-row";
+    row.innerHTML =
+      '<span class="worker">' + c.name + '</span><span class="corridor">' + c.place + '</span>' +
+      '<span class="amount">' + c.amt + '</span>' +
+      '<span class="flap-cell"><span class="flap pending" data-idx="' + i + '"><span class="led"></span><span class="flap-text">pending</span></span></span>';
+    boardBody.appendChild(row);
+  });
+
+  function flipToSent(idx) {
+    var el = boardBody.querySelectorAll(".flap")[idx];
+    if (!el) return;
+    el.classList.remove("pending"); el.classList.add("sent");
+    el.querySelector(".flap-text").textContent = "sent";
+  }
+  function resetAll() {
+    boardBody.querySelectorAll(".flap").forEach(function(el) {
+      el.classList.remove("sent"); el.classList.add("pending");
+      el.querySelector(".flap-text").textContent = "pending";
+    });
+  }
+  function runCycle() {
+    resetAll();
+    if (reduceMotion) { corridors.forEach(function(_, i) { flipToSent(i); }); return; }
+    corridors.forEach(function(_, i) { setTimeout(function() { flipToSent(i); }, 700 + i * 900); });
+  }
+  runCycle();
+  setInterval(runCycle, corridors.length * 900 + 4000);
+
+  var clockEl = document.getElementById("board-clock");
+  function tickClock() {
+    var d = new Date(); var pad = function(n) { return String(n).padStart(2, "0"); };
+    clockEl.textContent = pad(d.getUTCHours()) + ":" + pad(d.getUTCMinutes()) + ":" + pad(d.getUTCSeconds()) + " UTC";
+  }
+  tickClock(); setInterval(tickClock, 1000);
+
+  var toggle = document.getElementById("view-toggle");
+  var btns = toggle.querySelectorAll("button");
+  var panelPayer = document.getElementById("panel-payer");
+  var panelWorker = document.getElementById("panel-worker");
+  btns.forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      btns.forEach(function(b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      var view = btn.getAttribute("data-view");
+      toggle.classList.toggle("worker-active", view === "worker");
+      panelPayer.classList.toggle("active", view === "payer");
+      panelWorker.classList.toggle("active", view === "worker");
+    });
+  });
+
+  var grid = document.getElementById("corridor-grid");
+  var detail = document.getElementById("corridor-detail");
+  grid.querySelectorAll(".corridor-cell").forEach(function(cell) {
+    cell.addEventListener("click", function() {
+      grid.querySelectorAll(".corridor-cell").forEach(function(c) { c.classList.remove("active"); });
+      cell.classList.add("active");
+      var name = cell.querySelector(".c-name").textContent;
+      detail.innerHTML =
+        '<div><p class="cd-label">why ' + name + '</p><p style="margin:0;max-width:46ch">' + cell.getAttribute("data-detail") + '</p></div>' +
+        '<div style="text-align:right"><p class="cd-label">the number</p><p class="cd-fig" style="font-size:16px;font-weight:600">' + cell.getAttribute("data-fig") + '</p></div>';
+    });
+  });
+
+  var counted = false;
+  function countUp() {
+    if (counted) return;
+    var stats = document.querySelectorAll(".stat b");
+    var top = document.querySelector(".stats").getBoundingClientRect().top;
+    if (top > window.innerHeight * 0.85) return;
+    counted = true;
+    stats.forEach(function(el) {
+      var target = parseFloat(el.getAttribute("data-target"));
+      var suffix = el.getAttribute("data-suffix") || "";
+      var prefix = el.getAttribute("data-prefix") || "";
+      if (reduceMotion) { el.textContent = prefix + target + suffix; return; }
+      var start = 0; var dur = 1100; var startTime = null;
+      function step(ts) {
+        if (!startTime) startTime = ts;
+        var progress = Math.min((ts - startTime) / dur, 1);
+        var eased = 1 - Math.pow(1 - progress, 3);
+        var val = start + (target - start) * eased;
+        var display = target % 1 === 0 ? Math.round(val) : val.toFixed(2);
+        el.textContent = prefix + display + suffix;
+        if (progress < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    });
+  }
+  window.addEventListener("scroll", countUp);
+  countUp();
+
+  // ---------- Live contract wiring ----------
+  var PAYROLL_ADDR = "0xb9AdBE24f82F97079C681d38Fa76f605170BB568";
+  var TOKEN_ADDR = "0x20C0000000000000000000000000000000000000";
+  var CHAIN_ID_HEX = "0xa5bf";
+  var EXPLORER = "https://explore.moderato.tempo.xyz";
+  var PAYROLL_ABI = [
+    "constructor(address _token)",
+    "function addWorker(address wallet, uint256 amount) external",
+    "function payWorker(uint256 index) external",
+    "function payAllWorkers() external",
+    "function getWorkerCount() external view returns (uint256)",
+    "function getWorker(uint256 index) external view returns (tuple(address wallet, uint256 amount, uint8 status))",
+    "function owner() external view returns (address)",
+    "event PayoutSent(address indexed wallet, uint256 amount)"
+  ];
+  var TOKEN_ABI = [
+    "function approve(address spender, uint256 amount) external returns (bool)",
+    "function allowance(address owner, address spender) view returns (uint256)"
+  ];
+  var PAYROLL_BYTECODE = "0x608060405234801561000f575f5ffd5b5060405161117338038061117383398181016040528101906100319190610114565b805f5f6101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055503360015f6101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505061013f565b5f5ffd5b5f73ffffffffffffffffffffffffffffffffffffffff82169050919050565b5f6100e3826100ba565b9050919050565b6100f3816100d9565b81146100fd575f5ffd5b50565b5f8151905061010e816100ea565b92915050565b5f60208284031215610129576101286100b6565b5b5f61013684828501610100565b91505092915050565b6110278061014c5f395ff3fe608060405234801561000f575f5ffd5b5060043610610086575f3560e01c8063a39dbdb911610059578063a39dbdb9146100ec578063f1a22dc21461011c578063f5bd346a1461014e578063fc0c546a1461016a57610086565b80634d7599f11461008a5780636b6096fc146100a857806380c6d74d146100c45780638da5cb5b146100ce575b5f5ffd5b610092610188565b60405161009f9190610bca565b60405180910390f35b6100c260048036038101906100bd9190610c6b565b610194565b005b6100cc6103a6565b005b6100d66106be565b6040516100e39190610cb8565b60405180910390f35b61010660048036038101906101019190610cd1565b6106e3565b6040516101139190610dcd565b60405180910390f35b61013660048036038101906101319190610cd1565b6107b5565b60405161014593929190610df5565b60405180910390f35b61016860048036038101906101639190610cd1565b610815565b005b610172610b48565b60405161017f9190610e85565b60405180910390f35b5f600280549050905090565b60015f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff161461021a576040517f30cd747100000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b600260405180606001604052808473ffffffffffffffffffffffffffffffffffffffff1681526020018381526020016001600281111561025d5761025c610d1a565b5b815250908060018154018082558091505060019003905f5260205f2090600302015f909190919091505f820151815f015f6101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff160217905550602082015181600101556040820151816002015f6101000a81548160ff021916908360028111156102fe576102fd610d1a565b5b021790555050508173ffffffffffffffffffffffffffffffffffffffff167f2134b5eccd5cfb59a2da50873f68df9fb45177e85893927bc608d69928182b668260405161034b9190610bca565b60405180910390a28173ffffffffffffffffffffffffffffffffffffffff167f3b5ed3803a7a6cc327ccfcf575481bd840466a8af722111e006d6a9bff68d04c600160405161039a9190610e9e565b60405180910390a25050565b60015f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff161461042c576040517f30cd747100000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b5f5f90505b6002805490508110156106bb575f6002828154811061045357610452610eb7565b5b905f5260205f20906003020190506001600281111561047557610474610d1a565b5b816002015f9054906101000a900460ff16600281111561049857610497610d1a565b5b036106ad575f5f5f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff166323b872dd33845f015f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1685600101546040518463ffffffff1660e01b815260040161052193929190610ee4565b6020604051808303815f875af115801561053d573d5f5f3e3d5ffd5b505050506040513d601f19601f820116820180604052508101906105619190610f4e565b90508061059a576040517f90b8ec1800000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b6002826002015f6101000a81548160ff021916908360028111156105c1576105c0610d1a565b5b0217905550815f015f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff167f3b5ed3803a7a6cc327ccfcf575481bd840466a8af722111e006d6a9bff68d04c600260405161062f9190610e9e565b60405180910390a2815f015f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff167f6c114f03096d92b098f0f087d8fd4a756d362d86a9649a07142404e7fd1d77b583600101546040516106a39190610bca565b60405180910390a2505b508080600101915050610431565b50565b60015f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b6106eb610b6c565b600282815481106106ff576106fe610eb7565b5b905f5260205f2090600302016040518060600160405290815f82015f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200160018201548152602001600282015f9054906101000a900460ff16600281111561079857610797610d1a565b5b60028111156107aa576107a9610d1a565b5b815250509050919050565b600281815481106107c4575f80fd5b905f5260205f2090600302015f91509050805f015f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1690806001015490806002015f9054906101000a900460ff16905083565b60015f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff161461089b576040517f30cd747100000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b5f600282815481106108b0576108af610eb7565b5b905f5260205f2090600302019050600160028111156108d2576108d1610d1a565b5b816002015f9054906101000a900460ff1660028111156108f5576108f4610d1a565b5b14610935576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161092c90610fd3565b60405180910390fd5b5f5f5f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff166323b872dd33845f015f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1685600101546040518463ffffffff1660e01b81526004016109b993929190610ee4565b6020604051808303815f875af11580156109d5573d5f5f3e3d5ffd5b505050506040513d601f19601f820116820180604052508101906109f99190610f4e565b905080610a32576040517f90b8ec1800000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b6002826002015f6101000a81548160ff02191690836002811115610a5957610a58610d1a565b5b0217905550815f015f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff167f3b5ed3803a7a6cc327ccfcf575481bd840466a8af722111e006d6a9bff68d04c6002604051610ac79190610e9e565b60405180910390a2815f015f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff167f6c114f03096d92b098f0f087d8fd4a756d362d86a9649a07142404e7fd1d77b58360010154604051610b3b9190610bca565b60405180910390a2505050565b5f5f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b60405180606001604052805f73ffffffffffffffffffffffffffffffffffffffff1681526020015f81526020015f6002811115610bac57610bab610d1a565b5b81525090565b5f819050919050565b610bc481610bb2565b82525050565b5f602082019050610bdd5f830184610bbb565b92915050565b5f5ffd5b5f73ffffffffffffffffffffffffffffffffffffffff82169050919050565b5f610c1082610be7565b9050919050565b610c2081610c06565b8114610c2a575f5ffd5b50565b5f81359050610c3b81610c17565b92915050565b610c4a81610bb2565b8114610c54575f5ffd5b50565b5f81359050610c6581610c41565b92915050565b5f5f60408385031215610c8157610c80610be3565b5b5f610c8e85828601610c2d565b9250506020610c9f85828601610c57565b9150509250929050565b610cb281610c06565b82525050565b5f602082019050610ccb5f830184610ca9565b92915050565b5f60208284031215610ce657610ce5610be3565b5b5f610cf384828501610c57565b91505092915050565b610d0581610c06565b82525050565b610d1481610bb2565b82525050565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52602160045260245ffd5b60038110610d5857610d57610d1a565b5b50565b5f819050610d6882610d47565b919050565b5f610d7782610d5b565b9050919050565b610d8781610d6d565b82525050565b606082015f820151610da15f850182610cfc565b506020820151610db46020850182610d0b565b506040820151610dc76040850182610d7e565b50505050565b5f606082019050610de05f830184610d8d565b92915050565b610def81610d6d565b82525050565b5f606082019050610e085f830186610ca9565b610e156020830185610bbb565b610e226040830184610de6565b949350505050565b5f819050919050565b5f610e4d610e48610e4384610be7565b610e2a565b610be7565b9050919050565b5f610e5e82610e33565b9050919050565b5f610e6f82610e54565b9050919050565b610e7f81610e65565b82525050565b5f602082019050610e985f830184610e76565b92915050565b5f602082019050610eb15f830184610de6565b92915050565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52603260045260245ffd5b5f606082019050610ef75f830186610ca9565b610f046020830185610ca9565b610f116040830184610bbb565b949350505050565b5f8115159050919050565b610f2d81610f19565b8114610f37575f5ffd5b50565b5f81519050610f4881610f24565b92915050565b5f60208284031215610f6357610f62610be3565b5b5f610f7084828501610f3a565b91505092915050565b5f82825260208201905092915050565b7f616c7265616479207061696400000000000000000000000000000000000000005f82015250565b5f610fbd600c83610f79565b9150610fc882610f89565b602082019050919050565b5f6020820190508181035f830152610fea81610fb1565b905091905056fea26469706673582212203dca5186e8cff176e169fa83254d1f5e3eaa848a9b6cd2a069ca739c047fe31c64736f6c63430008240033";
+
+  var provider, signer, account, payroll, payrollRead;
+  var activePayrollAddress = PAYROLL_ADDR;
+  var statusEl = document.getElementById("wallet-status");
+  var connectBtn = document.getElementById("connect-btn");
+  var addBtn = document.getElementById("add-worker-btn");
+  var payAllBtn = document.getElementById("pay-all-btn");
+  var refreshBtn = document.getElementById("refresh-btn");
+  var payerMsg = document.getElementById("payer-msg");
+
+  function short(a) { return a.slice(0,6) + "…" + a.slice(-4); }
+
+  async function ensureNetwork() {
+    try {
+      await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_ID_HEX }] });
+    } catch (err) {
+      if (err && err.code === 4902) {
+        await window.ethereum.request({ method: "wallet_addEthereumChain", params: [{
+          chainId: CHAIN_ID_HEX, chainName: "Tempo Testnet (Moderato)",
+          nativeCurrency: { name: "Tempo", symbol: "TPO", decimals: 18 },
+          rpcUrls: ["https://rpc.moderato.tempo.xyz"], blockExplorerUrls: [EXPLORER]
+        }] });
+      } else { throw err; }
+    }
+  }
+
+  async function connectWallet() {
+    if (!window.ethereum) { statusEl.textContent = "No wallet found — install MetaMask to use live features."; return; }
+    try {
+      connectBtn.textContent = "Connecting…";
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      await ensureNetwork();
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      signer = provider.getSigner();
+      account = await signer.getAddress();
+      payroll = new ethers.Contract(activePayrollAddress, PAYROLL_ABI, signer);
+      payrollRead = payroll;
+      statusEl.textContent = "Connected as " + short(account);
+      connectBtn.textContent = "Connected";
+      var ownerAddr = await payrollRead.owner();
+      var isOwner = ownerAddr.toLowerCase() === account.toLowerCase();
+      var ownerNote = document.getElementById("owner-note");
+      if (isOwner) {
+        ownerNote.innerHTML = '<span style="color:var(--green)">You are the payroll owner — add/pay actions are live.</span>';
+        addBtn.disabled = false; addBtn.textContent = "Add worker";
+        payAllBtn.disabled = false; payAllBtn.textContent = "Pay all pending";
+      } else {
+        ownerNote.innerHTML = 'This shared contract is owned by <span style="font-family:var(--font-mono)">' + short(ownerAddr) +
+          '</span>. Add/pay actions are restricted to the owner wallet by design — that\'s the same access control a real payroll product needs. Use "Deploy your own sandbox" below to get full owner access with your own test contract.';
+        addBtn.disabled = true; addBtn.textContent = "Owner-only action";
+        payAllBtn.disabled = true; payAllBtn.textContent = "Owner-only action";
+      }
+      refreshBtn.disabled = false;
+      document.getElementById("lookup-addr").value = account;
+      loadWorkers();
+    } catch (err) {
+      statusEl.textContent = "Connection failed: " + (err.message || err);
+      connectBtn.textContent = "Connect wallet";
+    }
+  }
+  connectBtn.addEventListener("click", connectWallet);
+
+  async function loadWorkers() {
+    if (!payrollRead) return;
+    var listEl = document.getElementById("worker-list");
+    listEl.innerHTML = '<p style="font-size:13px;color:var(--ink-soft);padding:14px 0">Loading from chain…</p>';
+    try {
+      var count = (await payrollRead.getWorkerCount()).toNumber();
+      var start = Math.max(0, count - 8);
+      var rows = "";
+      for (var i = start; i < count; i++) {
+        var w = await payrollRead.getWorker(i);
+        var amt = (Number(w.amount) / 1e6).toFixed(2);
+        var sent = w.status === 2;
+        rows += '<div class="worker-item"><span class="w-name">#' + i + ' ' + short(w.wallet) + '</span><span class="w-amt">$' + amt + '</span>' +
+          '<span class="status-pill ' + (sent ? "sent" : "pending") + '"><span class="led"></span>' + (sent ? "sent" : "pending") + '</span></div>';
+      }
+      listEl.innerHTML = rows || '<p style="font-size:13px;color:var(--ink-soft);padding:14px 0">No workers added yet.</p>';
+    } catch (err) {
+      listEl.innerHTML = '<p style="font-size:13px;color:var(--ink-soft);padding:14px 0">Could not load: ' + (err.message || err) + '</p>';
+    }
+  }
+  refreshBtn.addEventListener("click", loadWorkers);
+
+  var deployBtn = document.getElementById("deploy-sandbox-btn");
+  deployBtn.addEventListener("click", async function() {
+    if (!signer) { payerMsg.textContent = "Connect your wallet first."; return; }
+    try {
+      deployBtn.disabled = true; deployBtn.textContent = "Confirm deploy in wallet…";
+      var factory = new ethers.ContractFactory(PAYROLL_ABI, PAYROLL_BYTECODE, signer);
+      var contract = await factory.deploy(TOKEN_ADDR);
+      payerMsg.textContent = "Deploy tx sent: " + contract.deployTransaction.hash + " — waiting for confirmation…";
+      deployBtn.textContent = "Deploying…";
+      await contract.deployed();
+      activePayrollAddress = contract.address;
+      payroll = contract; payrollRead = contract;
+      document.getElementById("contract-addr-display").textContent = short(activePayrollAddress);
+      document.getElementById("owner-note").innerHTML = 'Sandbox deployed — you own this instance. ' +
+        '<a href="' + EXPLORER + '/address/' + activePayrollAddress + '" target="_blank" rel="noopener" style="color:var(--violet-deep)">View on explorer</a>';
+      addBtn.disabled = false; addBtn.textContent = "Add worker";
+      payAllBtn.disabled = false; payAllBtn.textContent = "Pay all pending";
+      deployBtn.textContent = "Sandbox deployed ✓";
+      payerMsg.innerHTML = 'Your sandbox is live: <a href="' + EXPLORER + '/address/' + activePayrollAddress + '" target="_blank" rel="noopener" style="color:var(--violet-deep)">' + short(activePayrollAddress) + '</a>. Get free pathUSD from the faucet link above, then add a worker below.';
+      loadWorkers();
+    } catch (err) {
+      payerMsg.textContent = "Deploy failed: " + (err.reason || err.message || err);
+      deployBtn.disabled = false; deployBtn.textContent = "Deploy your own sandbox";
+    }
+  });
+
+  addBtn.addEventListener("click", async function() {
+    var addr = document.getElementById("add-addr").value.trim();
+    var amt = document.getElementById("add-amt").value.trim();
+    if (!ethers.utils.isAddress(addr) || !amt) { payerMsg.textContent = "Enter a valid address and amount."; return; }
+    try {
+      addBtn.disabled = true; addBtn.textContent = "Confirm in wallet…";
+      var units = ethers.utils.parseUnits(amt, 6);
+      var tx = await payroll.addWorker(addr, units);
+      payerMsg.textContent = "Tx sent: " + tx.hash + " — waiting for confirmation…";
+      await tx.wait();
+      payerMsg.innerHTML = 'Confirmed: <a href="' + EXPLORER + '/tx/' + tx.hash + '" target="_blank" rel="noopener" style="color:var(--violet-deep)">' + short(tx.hash) + '</a>';
+      loadWorkers();
+    } catch (err) {
+      payerMsg.textContent = "Failed: " + (err.reason || err.message || err);
+    } finally {
+      addBtn.disabled = false; addBtn.textContent = "Add worker";
+    }
+  });
+
+  payAllBtn.addEventListener("click", async function() {
+    try {
+      payAllBtn.disabled = true; payAllBtn.textContent = "Checking approval…";
+      var token = new ethers.Contract(TOKEN_ADDR, TOKEN_ABI, signer);
+      var allowance = await token.allowance(account, PAYROLL_ADDR);
+      if (allowance.lt(ethers.utils.parseUnits("1000000", 6))) {
+        payAllBtn.textContent = "Approve in wallet…";
+        var approveTx = await token.approve(PAYROLL_ADDR, ethers.constants.MaxUint256);
+        await approveTx.wait();
+      }
+      payAllBtn.textContent = "Confirm payout in wallet…";
+      var tx = await payroll.payAllWorkers();
+      payerMsg.textContent = "Tx sent: " + tx.hash + " — waiting for confirmation…";
+      await tx.wait();
+      payerMsg.innerHTML = 'Paid! <a href="' + EXPLORER + '/tx/' + tx.hash + '" target="_blank" rel="noopener" style="color:var(--violet-deep)">' + short(tx.hash) + '</a>';
+      loadWorkers();
+    } catch (err) {
+      payerMsg.textContent = "Failed: " + (err.reason || err.message || err);
+    } finally {
+      payAllBtn.disabled = false; payAllBtn.textContent = "Pay all pending";
+    }
+  });
+
+  document.getElementById("lookup-btn").addEventListener("click", async function() {
+    var addr = document.getElementById("lookup-addr").value.trim();
+    var resultsEl = document.getElementById("worker-results");
+    if (!ethers.utils.isAddress(addr)) { resultsEl.innerHTML = '<p style="font-size:13px;color:var(--ink-soft)">Enter a valid address.</p>'; return; }
+    var readProvider = provider || new ethers.providers.JsonRpcProvider("https://rpc.moderato.tempo.xyz");
+    var reader = new ethers.Contract(PAYROLL_ADDR, PAYROLL_ABI, readProvider);
+    resultsEl.innerHTML = '<p style="font-size:13px;color:var(--ink-soft)">Scanning chain…</p>';
+    try {
+      var count = (await reader.getWorkerCount()).toNumber();
+      var matches = [];
+      for (var i = 0; i < count; i++) {
+        var w = await reader.getWorker(i);
+        if (w.wallet.toLowerCase() === addr.toLowerCase()) matches.push({ idx: i, amount: w.amount, status: w.status });
+      }
+      if (!matches.length) { resultsEl.innerHTML = '<p style="font-size:13px;color:var(--ink-soft)">No payroll entries found for this address.</p>'; return; }
+      var html = "";
+      for (var j = 0; j < matches.length; j++) {
+        var m = matches[j];
+        var sent = m.status === 2;
+        var amt = (Number(m.amount) / 1e6).toFixed(2);
+        html += '<div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--hairline)">' +
+          '<p class="worker-amount" style="font-size:28px">$' + amt + '</p>' +
+          '<p class="worker-sub">entry #' + m.idx + ' · pathUSD</p>' +
+          '<div class="worker-track"><div class="track-line"></div>' +
+          '<div class="track-node done"><div class="track-dot"></div><span class="track-label">added</span></div>' +
+          '<div class="track-node ' + (sent ? "done" : "active") + '"><div class="track-dot"></div><span class="track-label">pending</span></div>' +
+          '<div class="track-node ' + (sent ? "done" : "") + '"><div class="track-dot"></div><span class="track-label">sent</span></div></div></div>';
+      }
+      resultsEl.innerHTML = html;
+    } catch (err) {
+      resultsEl.innerHTML = '<p style="font-size:13px;color:var(--ink-soft)">Lookup failed: ' + (err.message || err) + '</p>';
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
